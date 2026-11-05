@@ -1,41 +1,74 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
+
     function signedIn() { return request.auth != null; }
-    function isAdmin() { return signedIn() && request.auth.token.email == 'pranavpande43@gmail.com'; }
-    function isRenter() { return signedIn() && exists(/databases/$(database)/documents/renters/$(request.auth.uid)); }
+
+    // Only the admin email, signed in with email+password, is admin.
+    function isAdmin() {
+      return signedIn()
+        && request.auth.token.email == 'pranavpande43@gmail.com'
+        && request.auth.token.firebase.sign_in_provider == 'password';
+    }
+
+    // A renter is a signed-in user that has a renters/{uid} document made by the admin.
+    function isRenter() {
+      return signedIn()
+        && exists(/databases/$(database)/documents/renters/$(request.auth.uid));
+    }
+
+    function newDoc() { return request.resource.data; }
     function validMonth(m) { return m is string && m.matches('^[0-9]{4}-(0[1-9]|1[0-2])$'); }
 
+    // Payment details shown to renters. Renters can read, only admin can write.
     match /settings/payment {
-      allow read: if isAdmin() || isRenter();
+      allow get: if isAdmin() || isRenter();
+      allow list: if false;
       allow create, update: if isAdmin()
-        && request.resource.data.keys().hasOnly(['details', 'smsTemplate'])
-        && request.resource.data.details is string && request.resource.data.details.size() <= 1000
-        && request.resource.data.smsTemplate is string && request.resource.data.smsTemplate.size() <= 500;
+        && newDoc().keys().hasOnly(['details', 'smsTemplate'])
+        && newDoc().keys().hasAll(['details', 'smsTemplate'])
+        && newDoc().details is string && newDoc().details.size() <= 500
+        && newDoc().smsTemplate is string && newDoc().smsTemplate.size() <= 300;
+      allow delete: if false;
     }
 
     match /renters/{uid} {
-      allow read: if isAdmin() || (signedIn() && request.auth.uid == uid);
+      allow get: if isAdmin() || (signedIn() && request.auth.uid == uid);
+      allow list: if isAdmin();
       allow create, update: if isAdmin()
-        && request.resource.data.keys().hasOnly(['uid','name','phone','flat','rent','dueDay'])
-        && request.resource.data.uid == uid
-        && request.resource.data.name is string && request.resource.data.name.size() <= 60
-        && request.resource.data.phone is string && request.resource.data.phone.matches('^[0-9]{10}$')
-        && request.resource.data.flat is string && request.resource.data.flat.size() <= 30
-        && request.resource.data.rent is number && request.resource.data.rent > 0
-        && request.resource.data.dueDay is number && request.resource.data.dueDay >= 1 && request.resource.data.dueDay <= 28;
+        && newDoc().keys().hasOnly(['uid', 'name', 'phone', 'flat', 'rent', 'dueDay'])
+        && newDoc().keys().hasAll(['uid', 'name', 'phone', 'flat', 'rent', 'dueDay'])
+        && newDoc().uid == uid
+        && newDoc().name is string && newDoc().name.size() >= 1 && newDoc().name.size() <= 60
+        && newDoc().phone is string && newDoc().phone.matches('^[0-9]{10}$')
+        && newDoc().flat is string && newDoc().flat.size() >= 1 && newDoc().flat.size() <= 30
+        && newDoc().rent is int && newDoc().rent > 0 && newDoc().rent <= 10000000
+        && newDoc().dueDay is int && newDoc().dueDay >= 1 && newDoc().dueDay <= 28;
       allow delete: if isAdmin();
     }
 
+    // One document per renter per month, id = renterId_YYYY-MM. Only admin can write.
     match /payments/{id} {
-      allow read: if isAdmin() || (signedIn() && resource.data.renterId == request.auth.uid);
+      allow get, list: if isAdmin()
+        || (isRenter() && resource.data.renterId == request.auth.uid);
       allow create, update: if isAdmin()
-        && request.resource.data.keys().hasOnly(['renterId','month','status','method','refId','smsSent','amount','receivedAt'])
-        && validMonth(request.resource.data.month)
-        && request.resource.data.status in ['pending','submitted','received'];
+        && newDoc().keys().hasAll(['renterId', 'month', 'status', 'method'])
+        && newDoc().keys().hasOnly(['renterId', 'month', 'status', 'method', 'amount', 'receivedAt', 'smsSent', 'refId'])
+        && newDoc().renterId is string
+        && exists(/databases/$(database)/documents/renters/$(newDoc().renterId))
+        && validMonth(newDoc().month)
+        && id == newDoc().renterId + '_' + newDoc().month
+        && newDoc().status in ['pending', 'received']
+        && newDoc().method in ['', 'cash', 'upi', 'bank']
+        && (!('amount' in newDoc()) || (newDoc().amount is int && newDoc().amount > 0 && newDoc().amount <= 10000000))
+        && (!('receivedAt' in newDoc()) || (newDoc().receivedAt is string && newDoc().receivedAt.matches('^[0-9]{4}-[0-9]{2}-[0-9]{2}$')))
+        && (newDoc().status != 'received' || ('amount' in newDoc() && 'receivedAt' in newDoc()))
+        && (!('smsSent' in newDoc()) || newDoc().smsSent is bool)
+        && (!('refId' in newDoc()) || (newDoc().refId is string && newDoc().refId.size() <= 60));
       allow delete: if isAdmin();
     }
 
+    // Everything else is closed.
     match /{document=**} { allow read, write: if false; }
   }
 }

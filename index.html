@@ -1,16 +1,16 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;800&display=swap" rel="stylesheet"><link rel="manifest" href="manifest.json"><meta name="theme-color" content="#2563eb"><meta name="mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-status-bar-style" content="default"><meta name="apple-mobile-web-app-title" content="Myhomerent"><link rel="apple-touch-icon" href="apple-touch-icon.png"><link rel="stylesheet" href="css/style.css"><title>Myhomerent</title></head><body class="lg">
-<main class="login"><img class="logo" src="icon-192.png" alt=""><div class="card"><h1>Myhomerent</h1><p class="m" style="margin:0">Sign in to manage or pay your rent.</p>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:wght@600;800&family=Figtree:wght@400;600;700&display=swap" rel="stylesheet"><link rel="manifest" href="manifest.json"><meta name="theme-color" content="#F2F5F4"><meta name="mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-title" content="Myhomerent"><link rel="apple-touch-icon" href="apple-touch-icon.png"><link rel="stylesheet" href="css/style.css"><title>Myhomerent</title></head><body>
+<main class="login"><div class="mk"><svg width="34" height="34" viewBox="0 0 24 24" fill="#fff" aria-hidden="true"><path d="M12 3 2.5 11.5H5V20h5.5v-5.5h3V20H19v-8.5h2.5z"/></svg></div><h1>Myhomerent</h1><p class="m" style="font-size:16px;margin:4px 0 0">Rent reminders for you and your renters.</p>
 <div class="seg" id="seg"><button class="t on" data-k="r">Renter</button><button class="t" data-k="a">Admin</button></div>
-<label class="lbl" id="lb" for="p">Phone number</label><input id="p" autocapitalize="off" autocorrect="off" spellcheck="false" enterkeyhint="next">
+<label class="lbl" id="lb" for="p">Phone number</label><div class="ph"><span class="cc" id="cc">+91</span><input id="p" autocapitalize="off" autocorrect="off" spellcheck="false" enterkeyhint="next"></div>
 <label class="lbl" for="w">Password</label><div class="pw"><input id="w" type="password" placeholder="Password" autocomplete="current-password" enterkeyhint="go"><button type="button" class="g t eye" id="eye">Show</button></div>
-<button id="b">Sign in</button><p id="e" class="m" style="color:var(--r);margin:10px 0 0" role="alert"></p></div></main>
+<button id="b">Sign in</button><p id="e" class="m" style="color:var(--r);margin:10px 0 0" role="alert"></p></main>
 <script type="module">
 import{auth,lid,go,isAdminUser,signInWithEmailAndPassword,onAuthStateChanged}from"./js/firebase.js";
 const $=i=>document.getElementById(i),p=$("p"),w=$("w");let k="r";
 try{k=localStorage.getItem("mhr_k")=="a"?"a":"r"}catch{}
 function mode(x,f){k=x;try{localStorage.setItem("mhr_k",x)}catch{}
  document.querySelectorAll("#seg button").forEach(t=>t.classList.toggle("on",t.dataset.k==x));
- const a=x=="a";p.type=a?"email":"tel";p.inputMode=a?"email":"numeric";p.autocomplete="username";p.placeholder=a?"Email address":"10-digit phone number";p.value="";$("lb").textContent=a?"Admin email":"Phone number";
+ const a=x=="a";p.type=a?"email":"tel";p.inputMode=a?"email":"numeric";p.autocomplete="username";p.placeholder=a?"Email address":"10-digit number";p.value="";$("lb").textContent=a?"Admin email":"Phone number";$("cc").hidden=a;
  a?p.removeAttribute("maxlength"):p.setAttribute("maxlength","15");$("e").textContent="";if(f)p.focus()}
 mode(k);
 $("seg").onclick=e=>{const t=e.target.closest("button");if(t)mode(t.dataset.k,1)};
