@@ -12,3 +12,5 @@ Notes: SMS is plain text, so put UPI ID / bank text (or a link) in Payment detai
 GitHub pauses scheduled workflows after 60 days without repo activity; push a small commit to restart.
 
 Receipts: after marking a payment Received, admin taps 'Send receipt' (PDF, shared to WhatsApp). Renters can download their own receipts. Re-publish firestore.rules after updating.
+
+PWA: manifest.json, sw.js, icon-192.png, icon-512.png (root) + js/pwa.js. Renters are read-only; only admin writes.

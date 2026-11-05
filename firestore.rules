@@ -34,21 +34,6 @@ service cloud.firestore {
         && validMonth(request.resource.data.month)
         && request.resource.data.status in ['pending','submitted','received'];
       allow delete: if isAdmin();
-      allow create: if isRenter()
-        && request.resource.data.renterId == request.auth.uid
-        && validMonth(request.resource.data.month)
-        && id == request.auth.uid + '_' + request.resource.data.month
-        && request.resource.data.status == 'submitted'
-        && request.resource.data.keys().hasOnly(['renterId','month','status','refId'])
-        && request.resource.data.refId is string
-        && request.resource.data.refId.size() > 0 && request.resource.data.refId.size() <= 40;
-      allow update: if isRenter()
-        && resource.data.renterId == request.auth.uid
-        && resource.data.status != 'received'
-        && request.resource.data.status == 'submitted'
-        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status','refId'])
-        && request.resource.data.refId is string
-        && request.resource.data.refId.size() > 0 && request.resource.data.refId.size() <= 40;
     }
 
     match /{document=**} { allow read, write: if false; }

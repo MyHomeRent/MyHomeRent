@@ -1,8 +1,25 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;800&display=swap" rel="stylesheet"><link rel="stylesheet" href="css/style.css"><title>Myhomerent</title></head><body>
-<main class="login"><div class="card"><h1 style="color:var(--b);margin:0">Myhomerent</h1><p class="m">Sign in to manage or pay your rent.</p>
-<input id="p" placeholder="Phone number (admin: email)" inputmode="numeric"><input id="w" type="password" placeholder="Password"><button id="b" style="width:100%;margin-top:8px">Sign in</button><p id="e" class="m" style="color:var(--r)"></p></div></main>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;800&display=swap" rel="stylesheet"><link rel="manifest" href="manifest.json"><meta name="theme-color" content="#2563eb"><meta name="mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-status-bar-style" content="default"><meta name="apple-mobile-web-app-title" content="Myhomerent"><link rel="apple-touch-icon" href="apple-touch-icon.png"><link rel="stylesheet" href="css/style.css"><title>Myhomerent</title></head><body class="lg">
+<main class="login"><img class="logo" src="icon-192.png" alt=""><div class="card"><h1>Myhomerent</h1><p class="m" style="margin:0">Sign in to manage or pay your rent.</p>
+<div class="seg" id="seg"><button class="t on" data-k="r">Renter</button><button class="t" data-k="a">Admin</button></div>
+<label class="lbl" id="lb" for="p">Phone number</label><input id="p" autocapitalize="off" autocorrect="off" spellcheck="false" enterkeyhint="next">
+<label class="lbl" for="w">Password</label><div class="pw"><input id="w" type="password" placeholder="Password" autocomplete="current-password" enterkeyhint="go"><button type="button" class="g t eye" id="eye">Show</button></div>
+<button id="b">Sign in</button><p id="e" class="m" style="color:var(--r);margin:10px 0 0" role="alert"></p></div></main>
 <script type="module">
 import{auth,lid,go,isAdminUser,signInWithEmailAndPassword,onAuthStateChanged}from"./js/firebase.js";
+const $=i=>document.getElementById(i),p=$("p"),w=$("w");let k="r";
+try{k=localStorage.getItem("mhr_k")=="a"?"a":"r"}catch{}
+function mode(x,f){k=x;try{localStorage.setItem("mhr_k",x)}catch{}
+ document.querySelectorAll("#seg button").forEach(t=>t.classList.toggle("on",t.dataset.k==x));
+ const a=x=="a";p.type=a?"email":"tel";p.inputMode=a?"email":"numeric";p.autocomplete="username";p.placeholder=a?"Email address":"10-digit phone number";p.value="";$("lb").textContent=a?"Admin email":"Phone number";
+ a?p.removeAttribute("maxlength"):p.setAttribute("maxlength","15");$("e").textContent="";if(f)p.focus()}
+mode(k);
+$("seg").onclick=e=>{const t=e.target.closest("button");if(t)mode(t.dataset.k,1)};
+p.oninput=()=>{if(k=="r")p.value=p.value.replace(/[^\d+ ]/g,"")};
+$("eye").onclick=()=>{const s=w.type=="password";w.type=s?"text":"password";$("eye").textContent=s?"Hide":"Show"};
+[p,w].forEach(i=>i.onkeydown=e=>{if(e.key=="Enter")$("b").click()});
 onAuthStateChanged(auth,u=>{if(u)go(isAdminUser(u)?"admin.html":"renter.html")});
-b.onclick=async()=>{e.textContent="";try{await signInWithEmailAndPassword(auth,lid(p.value),w.value)}catch{e.textContent="Wrong phone number or password."}};
-</script></body></html>
+$("b").onclick=async()=>{const e=$("e"),b=$("b");e.textContent="";
+ if(!p.value.trim()||!w.value){e.textContent="Enter your "+(k=="a"?"email":"phone number")+" and password.";return}
+ b.disabled=true;b.textContent="Signing in...";
+ try{await signInWithEmailAndPassword(auth,lid(p.value),w.value)}catch{e.textContent=k=="a"?"Wrong email or password.":"Wrong phone number or password.";b.disabled=false;b.textContent="Sign in"}};
+</script><script src="js/pwa.js"></script></body></html>
