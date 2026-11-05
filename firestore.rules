@@ -36,14 +36,15 @@ service cloud.firestore {
       allow get: if isAdmin() || (signedIn() && request.auth.uid == uid);
       allow list: if isAdmin();
       allow create, update: if isAdmin()
-        && newDoc().keys().hasOnly(['uid', 'name', 'phone', 'flat', 'rent', 'dueDay'])
+        && newDoc().keys().hasOnly(['uid', 'name', 'phone', 'flat', 'rent', 'dueDay', 'since'])
         && newDoc().keys().hasAll(['uid', 'name', 'phone', 'flat', 'rent', 'dueDay'])
         && newDoc().uid == uid
         && newDoc().name is string && newDoc().name.size() >= 1 && newDoc().name.size() <= 60
         && newDoc().phone is string && newDoc().phone.matches('^[0-9]{10}$')
         && newDoc().flat is string && newDoc().flat.size() >= 1 && newDoc().flat.size() <= 30
         && newDoc().rent is int && newDoc().rent > 0 && newDoc().rent <= 10000000
-        && newDoc().dueDay is int && newDoc().dueDay >= 1 && newDoc().dueDay <= 28;
+        && newDoc().dueDay is int && newDoc().dueDay >= 1 && newDoc().dueDay <= 28
+        && (!('since' in newDoc()) || validMonth(newDoc().since));
       allow delete: if isAdmin();
     }
 

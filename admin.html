@@ -5,42 +5,69 @@
 <label class="lbl" for="n">Name</label><input id="n" placeholder="Full name" autocomplete="off">
 <label class="lbl" for="ph">Phone number</label><input id="ph" type="tel" inputmode="numeric" maxlength="15" placeholder="10-digit number" autocomplete="off">
 <div class="two"><div><label class="lbl" for="fl">Flat / room</label><input id="fl" placeholder="2"></div><div><label class="lbl" for="due">Due day (1-28)</label><input id="due" inputmode="numeric" placeholder="4"></div></div>
+<label class="lbl" for="since">Rent starts from</label><input id="since" type="month">
 <label class="lbl" for="rent">Monthly rent (Rs)</label><input id="rent" inputmode="numeric" placeholder="5000">
 <label class="lbl" for="pw">Password (min 6)</label><input id="pw" placeholder="Choose a password" autocomplete="off">
 <button id="add" style="width:100%;margin-top:16px;min-height:52px">Add renter</button> <p id="msg" class="m"></p></div>
 <div class="card" id="s3"><h2>Your UPI ID or QR link</h2><p class="m">Renters see this under Payment details, and it is added to reminder messages.</p><textarea id="pay" rows="2" placeholder="name@upi  or  https://link-to-your-qr" autocapitalize="off"></textarea><button id="save">Save</button> <span id="msg2" class="m"></span></div>
-</main><div class="tt" id="tt" hidden></div><nav class="tabs" id="tb"><button class="t on" data-s="s1"><svg viewBox="0 0 24 24"><path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"/></svg>Rent</button><button class="t" data-s="s2"><svg viewBox="0 0 24 24"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M19 8v6M22 11h-6"/></svg>Add renter</button></nav><script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<div id="s4" hidden><div class="card"><h2>Check a receipt</h2><p class="m" style="margin:0">Type the receipt number to see if it is real.</p><input id="rq" placeholder="MHR-202611-9876543210" autocapitalize="characters" autocomplete="off" spellcheck="false"><button id="rs" style="width:100%;margin-top:6px">Check receipt</button><div id="rr"></div></div>
+<button id="rep" class="ink" style="width:100%;margin-top:14px;min-height:52px">Download full report (PDF)</button><div id="tot"></div></div></main><div class="tt" id="tt" hidden></div><nav class="tabs" id="tb"><button class="t on" data-s="s1"><svg viewBox="0 0 24 24"><path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"/></svg>Rent</button><button class="t" data-s="s2"><svg viewBox="0 0 24 24"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M19 8v6M22 11h-6"/></svg>Add renter</button><button class="t" data-s="s4"><svg viewBox="0 0 24 24"><path d="M14 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9zM14 3v6h6M8 13h8M8 17h5"/></svg>Records</button></nav><script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script type="module">
-import{auth,db,email,month,today,esc,go,cfg,isAdminUser,dateStr,signOut,onAuthStateChanged,createUserWithEmailAndPassword,initializeApp,getAuth,doc,getDoc,setDoc,getDocs,collection}from"./js/firebase.js";
-import{share}from"./js/receipt.js";
-let T="";const RD={},M=month(),$=s=>document.getElementById(s);
+import{auth,db,email,month,today,esc,go,cfg,isAdminUser,dateStr,signOut,onAuthStateChanged,createUserWithEmailAndPassword,initializeApp,getAuth,doc,getDoc,setDoc,getDocs,collection,deleteDoc,query,where,signInWithEmailAndPassword}from"./js/firebase.js";
+import{sendWA,sendSMS,download,rno,dues,downloadStatement,downloadReport}from"./js/receipt.js";
+let T="",PAYS=[];const RD={},M=month(),$=s=>document.getElementById(s);
 onAuthStateChanged(auth,async u=>{if(!u)return go("index.html");if(!isAdminUser(u))return go("renter.html");load()});
 $("out").onclick=()=>signOut(auth);
 const err=x=>/permission/i.test(x.message)?"Firebase rules are outdated. Publish firestore.rules in the Firebase console.":x.message,W=p=>Promise.race([p,new Promise((_,j)=>setTimeout(()=>j(Error("Slow or no internet. Try again.")),15000))]),toast=m=>{const t=$("tt");t.textContent=m;t.hidden=false;clearTimeout(toast.h);toast.h=setTimeout(()=>t.hidden=true,4000)};
 async function load(){try{await W(load0())}catch(x){$("list").innerHTML='<p class="m">'+esc(x.message)+'</p><button class="g" id="rt">Retry</button>';$("rt").onclick=load}}
+const ml=m=>new Date(m+"-15").toLocaleString("en-IN",{month:"short",year:"numeric"}),fn=v=>Number(v).toLocaleString("en-IN");let ROWS=[];
+function recs(){
+ ROWS=Object.values(RD).map(({r})=>{const ps=PAYS.filter(a=>a.renterId==r.uid);return{r,ps,...dues(r,ps,M,today())}});
+ const paid=ROWS.reduce((s,x)=>s+x.paid,0),due=ROWS.reduce((s,x)=>s+x.amt,0),dm=ROWS.reduce((s,x)=>s+x.months.length,0);
+ $("tot").innerHTML='<div class="hero"><span>Total collected (all months)</span><b>Rs '+fn(paid)+'</b><span>Due: Rs '+fn(due)+' ('+dm+' unpaid month'+(dm==1?"":"s")+')</span></div>'+
+ ROWS.map(x=>'<div class="rc"><div class="top"><div class="av">'+esc((x.r.name||"?").trim().charAt(0).toUpperCase())+'</div><div class="nm"><b>'+esc(x.r.name)+'</b>Flat '+esc(x.r.flat)+', from '+ml(x.r.since||x.ps.map(a=>a.month).sort()[0]||M)+'</div><div class="pr"><b>Rs '+fn(x.paid)+'</b><span class="m">paid</span></div></div>'+
+ (x.months.length?'<p class="m" style="margin:12px 0 0">Due: Rs '+fn(x.amt)+'</p><div>'+x.months.map(m=>'<span class="chip">'+ml(m)+'</span>').join("")+'</div>':'<p class="m" style="margin:12px 0 0">No dues.</p>')+
+ '<div class="acts"><button class="g" data-i="'+esc(x.r.uid)+'" data-a="st">Statement PDF</button><button class="g" data-i="'+esc(x.r.uid)+'" data-a="sm">Start month</button><button class="dl t" data-i="'+esc(x.r.uid)+'" data-a="del">Delete renter permanently</button></div></div>').join("")}
+$("tot").onclick=async e=>{const bt=e.target.closest("button"),t=bt?bt.dataset:{};if(!t.i)return;const x=ROWS.find(z=>z.r.uid==t.i);
+ if(t.a=="del"){const nm=x.r.name;if(prompt("Permanent delete. This removes "+nm+" and all their records. Type DELETE to confirm.")!=="DELETE")return;
+  try{const ps=await W(getDocs(query(collection(db,"payments"),where("renterId","==",t.i))));for(const d of ps.docs)await W(deleteDoc(d.ref));await W(deleteDoc(doc(db,"renters",t.i)));toast(nm+" deleted.");await load()}catch(y){toast(err(y))}return}
+ if(t.a=="st")return downloadStatement(x.r,x.ps.slice().sort((a,b)=>b.month.localeCompare(a.month)),x);
+ if(t.a=="sm"){const v=prompt("Rent started from which month? (YYYY-MM)",x.r.since||M);if(!v)return;if(!/^\d{4}-(0[1-9]|1[0-2])$/.test(v))return toast("Use YYYY-MM, for example 2026-04");
+  try{await W(setDoc(doc(db,"renters",t.i),{since:v},{merge:true}));await load()}catch(y){toast(err(y))}}};
+$("rep").onclick=()=>downloadReport(ROWS,M);
+$("rs").onclick=()=>{const m=$("rq").value.toUpperCase().replace(/\s/g,"").match(/^MHR-?(\d{4})(\d{2})-?(\d{4,10})$/),o=$("rr");
+ if(!m){o.innerHTML='<div class="res no"><b>Wrong format</b>Example: MHR-202611-9876543210</div>';return}
+ const mo=m[1]+"-"+m[2],hits=Object.values(RD).filter(x=>x.r.phone.endsWith(m[3])).map(x=>({r:x.r,p:PAYS.find(a=>a.renterId==x.r.uid&&a.month==mo&&a.status=="received")})).filter(h=>h.p);
+ o.innerHTML=hits.length?hits.map(h=>'<div class="res ok"><b>Valid receipt '+rno(mo,h.r.phone)+'</b>'+esc(h.r.name)+', Flat '+esc(h.r.flat)+'<br>Rs '+fn(h.p.amount||h.r.rent)+' for '+ml(mo)+'<br>Received '+esc(h.p.receivedAt||"-")+' by '+(h.p.method=="cash"?"cash":"UPI / online")+'<button class="dl t" data-del="'+esc(h.r.uid)+'_'+mo+'">Delete this record</button></div>').join(""):'<div class="res no"><b>Not found</b>No paid record matches this receipt number. It may be fake, or the payment was undone.</div>'};
+$("since").value=M;
+$("rr").onclick=async e=>{const b=e.target.closest("button"),id=b&&b.dataset.del;if(!id||!confirm("Delete this payment record permanently?"))return;try{await W(deleteDoc(doc(db,"payments",id)));$("rr").innerHTML="";toast("Record deleted.");await load()}catch(y){toast(err(y))}};
 const TPL="Hello {name}, a reminder that your rent of Rs {rent} for {month} was due on {due}. Please pay at your earliest. {payment}";
 const remind=i=>{const{r}=RD[i],t=(today()>r.dueDay?TPL:TPL.replace("was due","is due")).replace(/{name}/g,()=>r.name).replace(/{rent}/g,()=>r.rent).replace(/{month}/g,()=>M).replace(/{due}/g,()=>M+"-"+String(r.dueDay).padStart(2,"0")).replace(/{payment}/g,()=>$("pay").value.trim());location.href="sms:+91"+r.phone+"?body="+encodeURIComponent(t)};
-const nav=s=>{$("s1").hidden=$("s3").hidden=s!="s1";$("s2").hidden=s!="s2";document.querySelectorAll(".tabs button").forEach(b=>b.classList.toggle("on",b.dataset.s==s));scrollTo(0,0)};
+const nav=s=>{$("s1").hidden=$("s3").hidden=s!="s1";$("s2").hidden=s!="s2";$("s4").hidden=s!="s4";document.querySelectorAll(".tabs button").forEach(b=>b.classList.toggle("on",b.dataset.s==s));scrollTo(0,0)};
 $("tb").onclick=e=>{const b=e.target.closest("button");if(b)nav(b.dataset.s)};nav("s1");
 async function load0(){
  const s=await getDoc(doc(db,"settings","payment"));if(s.exists()){$("pay").value=s.data().details||"";T=s.data().smsTemplate||""}
- const[rs,ps]=await Promise.all([getDocs(collection(db,"renters")),getDocs(collection(db,"payments"))]),pm={};
+ const[rs,ps]=await Promise.all([getDocs(collection(db,"renters")),getDocs(collection(db,"payments"))]),pm={};PAYS=ps.docs.map(d=>d.data());
  ps.forEach(d=>{const x=d.data();if(x.month==M)pm[x.renterId]=x});
  const fm=v=>Number(v).toLocaleString("en-IN"),dt=new Date(M+"-15"),mo=dt.toLocaleString("en-IN",{month:"long"}),ms=dt.toLocaleString("en-IN",{month:"short"}),
  bell='<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9M10.3 21a1.9 1.9 0 0 0 3.4 0"/></svg>';
  let h="",n=0,got=0,sum=0,tot=0,od=0,sg="";
  rs.forEach(d=>{const r=d.data(),p=pm[r.uid]||{status:"pending"},ok=p.status=="received",st=ok?"received":today()>r.dueDay?"overdue":"pending",u='data-i="'+esc(r.uid)+'"',rd=p.receivedAt?new Date(p.receivedAt+"T12:00:00").toLocaleDateString("en-IN",{day:"numeric",month:"short"}):"";
   RD[r.uid]={r,p};n++;tot+=+r.rent;if(st=="overdue")od++;sg+="<i"+(ok?' class="on"':"")+"></i>";if(ok){got++;sum+=+(p.amount||r.rent)}
-  h+='<div class="rc"><div class="top"><div class="av">'+esc((r.name||"?").trim().charAt(0).toUpperCase())+'</div><div class="nm"><b>'+esc(r.name)+'</b>Flat '+esc(r.flat)+', '+(ok?"received "+rd+(p.method?" by "+(p.method=="cash"?"cash":"UPI / online"):""):"due "+esc(r.dueDay)+" "+ms)+'</div><div class="pr"><b>Rs '+fm(r.rent)+'</b><span class="badge '+st+'">'+(ok?"paid":st)+'</span></div></div><div class="acts">'+
-  (ok?'<button '+u+' data-a="rc">Send receipt</button><button class="g" '+u+' data-s="pending">Undo</button>':'<button class="w" '+u+' data-a="rm">'+bell+' Send reminder</button><span class="ap">Already paid?</span><button class="g" '+u+' data-s="received" data-m="cash">Cash</button><button class="g" '+u+' data-s="received" data-m="upi">UPI / Online</button>')+'</div></div>'});
+  h+='<div class="rc"><div class="top"><div class="av">'+esc((r.name||"?").trim().charAt(0).toUpperCase())+'</div><div class="nm"><b>'+esc(r.name)+'</b>Flat '+esc(r.flat)+', '+(ok?"received "+rd+(p.method?" by "+(p.method=="cash"?"cash":"UPI / online"):""):"due "+esc(r.dueDay)+" "+ms)+'</div><div class="pr"><b>Rs '+fm(r.rent)+'</b><span class="badge '+st+'">'+(ok?"paid":st)+'</span></div></div>'+(ok?'<p class="m" style="margin:10px 0 0">Receipt no: <b>'+rno(p.month,r.phone)+'</b></p>':'')+'<div class="acts">'+
+  (ok?'<button '+u+' data-a="wa">WhatsApp</button><button '+u+' data-a="sms">SMS</button><button class="g" '+u+' data-a="pdf">PDF</button><button class="g" '+u+' data-s="pending">Undo</button>':'<button class="w" '+u+' data-a="rm">'+bell+' Send reminder</button><span class="ap">Already paid?</span><button class="g" '+u+' data-s="received" data-m="cash">Cash</button><button class="g" '+u+' data-s="received" data-m="upi">UPI / Online</button>')+'</div></div>'});
  $("st").innerHTML='<div class="hero"><span>Collected in '+mo+'</span><b>Rs '+fm(sum)+'</b><span>of Rs '+fm(tot)+' due</span><div class="sg">'+sg+'</div><div class="hf"><span>'+got+" of "+n+" paid</span>"+(od?'<span class="od">'+od+" overdue</span>":"")+"</div></div>";
- $("list").innerHTML=h||'<div class="card"><p class="m" style="margin:0">No renters yet. Tap Add renter to add your first one.</p></div>'}
-$("list").onclick=async e=>{const bt=e.target.closest("button"),t=bt?bt.dataset:{};if(!t.i)return;if(t.a=="rm")return remind(t.i);if(t.a=="rc")return share(RD[t.i].r,RD[t.i].p);
+ recs();$("list").innerHTML=h||'<div class="card"><p class="m" style="margin:0">No renters yet. Tap Add renter to add your first one.</p></div>'}
+$("list").onclick=async e=>{const bt=e.target.closest("button"),t=bt?bt.dataset:{};if(!t.i)return;if(t.a=="rm")return remind(t.i);if(t.a=="wa")return sendWA(RD[t.i].r,RD[t.i].p);if(t.a=="sms")return sendSMS(RD[t.i].r,RD[t.i].p);if(t.a=="pdf")return download(RD[t.i].r,RD[t.i].p);
  const lb=bt.textContent;bt.disabled=true;bt.textContent="Saving...";try{await W(setDoc(doc(db,"payments",t.i+"_"+M),{renterId:t.i,month:M,status:t.s,method:t.m||"",...(t.s=="received"?{amount:RD[t.i].r.rent,receivedAt:dateStr()}:{})},{merge:true}));await load()}catch(x){toast(err(x));bt.disabled=false;bt.textContent=lb}};
 $("add").onclick=async()=>{const f=["n","ph","fl","rent","due","pw"].map(i=>$(i).value.trim());
  if(f.some(x=>!x))return$("msg").textContent="Fill in all fields.";
- try{const c=await createUserWithEmailAndPassword(getAuth(initializeApp(cfg,"s"+Date.now())),email(f[1]),f[5]);
- await setDoc(doc(db,"renters",c.user.uid),{uid:c.user.uid,name:f[0],phone:f[1].replace(/\D/g,"").slice(-10),flat:f[2],rent:+f[3],dueDay:Math.min(28,Math.max(1,+f[4]))});
- $("msg").textContent="Renter added.";load()}catch(x){$("msg").textContent=x.message}};
+ if(f[1].replace(/\D/g,"").slice(-10).length!=10)return$("msg").textContent="Enter a 10-digit phone number.";
+ if(!(Number.isInteger(+f[3])&&+f[3]>0))return$("msg").textContent="Rent must be a whole number.";
+ if(!(Number.isInteger(+f[4])&&+f[4]>=1&&+f[4]<=28))return$("msg").textContent="Due day must be 1 to 28.";
+ if(f[5].length<6)return$("msg").textContent="Password needs at least 6 characters.";
+ try{const sa=getAuth(initializeApp(cfg,"s"+Date.now()));let c;try{c=await createUserWithEmailAndPassword(sa,email(f[1]),f[5])}catch(y){if(y.code!="auth/email-already-in-use")throw y;try{c=await signInWithEmailAndPassword(sa,email(f[1]),f[5])}catch{throw Error("This number was added before. Use the same old password, or remove the old login in Firebase Console > Authentication.")}}
+ await setDoc(doc(db,"renters",c.user.uid),{uid:c.user.uid,name:f[0],phone:f[1].replace(/\D/g,"").slice(-10),flat:f[2],rent:+f[3],dueDay:Math.min(28,Math.max(1,+f[4])),since:/^\d{4}-\d{2}$/.test($("since").value)?$("since").value:M});
+ $("msg").textContent="Renter added.";load()}catch(x){$("msg").textContent=err(x)}};
 $("save").onclick=async()=>{$("msg2").textContent="Saving...";try{await W(setDoc(doc(db,"settings","payment"),{details:$("pay").value.trim(),smsTemplate:T}));$("msg2").textContent="Saved."}catch(x){$("msg2").textContent=err(x)}};
 </script><script src="js/pwa.js"></script></body></html>
