@@ -1,33 +1,36 @@
 <!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;800&display=swap" rel="stylesheet"><link rel="manifest" href="manifest.json"><meta name="theme-color" content="#2563eb"><meta name="mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-status-bar-style" content="default"><meta name="apple-mobile-web-app-title" content="Myhomerent"><link rel="apple-touch-icon" href="apple-touch-icon.png"><link rel="stylesheet" href="css/style.css"><title>Admin - Myhomerent</title></head><body class="adm">
-<header><b>Myhomerent Admin</b><button class="g" id="out">Sign out</button></header><main>
+<header><b>Myhomerent Admin</b><span><button class="inst g" hidden>Install</button> <button class="g" id="out">Sign out</button></span></header><main>
 <div class="card" id="s1"><h2>This month's rent</h2><div class="stats" id="st"></div><div id="list"><p class="m">Loading...</p></div></div>
 <div class="card" id="s2"><h2>Add renter</h2><div class="grid"><input id="n" placeholder="Name"><input id="ph" type="tel" placeholder="Phone (10 digits)" inputmode="numeric" autocomplete="off"><input id="fl" placeholder="Flat / room"><input id="rent" placeholder="Monthly rent" inputmode="numeric"><input id="due" placeholder="Due day (1-28)" inputmode="numeric"><input id="pw" placeholder="Password (min 6)"></div><button id="add">Add renter</button> <span id="msg" class="m"></span></div>
-<div class="card" id="s3"><h2>Payment details and SMS</h2><p class="m">Bank, UPI ID or a link to your QR. This text is shown to renters and can be used in the SMS.</p><textarea id="pay" rows="4" placeholder="Bank: ...&#10;A/C: ...&#10;IFSC: ...&#10;UPI: ..."></textarea>
-<p class="m">Reminder SMS. Use {name} {rent} {month} {due} {payment}</p><textarea id="tpl" rows="3" placeholder="Hello {name}, your rent of Rs {rent} for {month} was due on {due}. Please pay now. {payment}"></textarea><button id="save">Save</button> <span id="msg2" class="m"></span></div>
-</main><nav class="tabs" id="tb"><button class="t on" data-s="s1"><svg viewBox="0 0 24 24"><path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"/></svg>Rent</button><button class="t" data-s="s2"><svg viewBox="0 0 24 24"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M19 8v6M22 11h-6"/></svg>Add renter</button><button class="t" data-s="s3"><svg viewBox="0 0 24 24"><rect x="2" y="5" width="20" height="14" rx="2"/><path d="M2 10h20"/></svg>Payments</button></nav><script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<div class="card" id="s3"><h2>Your UPI ID or QR link</h2><p class="m">Renters see this under How to pay, and it is added to reminder messages.</p><textarea id="pay" rows="2" placeholder="name@upi  or  https://link-to-your-qr" autocapitalize="off"></textarea><button id="save">Save</button> <span id="msg2" class="m"></span></div>
+</main><div class="tt" id="tt" hidden></div><nav class="tabs" id="tb"><button class="t on" data-s="s1"><svg viewBox="0 0 24 24"><path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"/></svg>Rent</button><button class="t" data-s="s2"><svg viewBox="0 0 24 24"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M19 8v6M22 11h-6"/></svg>Add renter</button></nav><script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script type="module">
 import{auth,db,email,month,today,esc,go,cfg,isAdminUser,dateStr,signOut,onAuthStateChanged,createUserWithEmailAndPassword,initializeApp,getAuth,doc,getDoc,setDoc,getDocs,collection}from"./js/firebase.js";
 import{share}from"./js/receipt.js";
-const RD={},M=month(),$=s=>document.getElementById(s);
+let T="";const RD={},M=month(),$=s=>document.getElementById(s);
 onAuthStateChanged(auth,async u=>{if(!u)return go("index.html");if(!isAdminUser(u))return go("renter.html");load()});
 $("out").onclick=()=>signOut(auth);
-const nav=s=>{["s1","s2","s3"].forEach(i=>$(i).hidden=i!=s);document.querySelectorAll(".tabs button").forEach(b=>b.classList.toggle("on",b.dataset.s==s));scrollTo(0,0)};
+const W=p=>Promise.race([p,new Promise((_,j)=>setTimeout(()=>j(Error("Slow or no internet. Try again.")),15000))]),toast=m=>{const t=$("tt");t.textContent=m;t.hidden=false;clearTimeout(toast.h);toast.h=setTimeout(()=>t.hidden=true,4000)};
+async function load(){try{await W(load0())}catch(x){$("list").innerHTML='<p class="m">'+esc(x.message)+'</p><button class="g" id="rt">Retry</button>';$("rt").onclick=load}}
+const TPL="Hello {name}, your rent of Rs {rent} for {month} was due on {due}. Please pay now. {payment}";
+const remind=i=>{const{r}=RD[i],t=TPL.replace(/{name}/g,()=>r.name).replace(/{rent}/g,()=>r.rent).replace(/{month}/g,()=>M).replace(/{due}/g,()=>M+"-"+String(r.dueDay).padStart(2,"0")).replace(/{payment}/g,()=>$("pay").value.trim());location.href="sms:+91"+r.phone+"?body="+encodeURIComponent(t)};
+const nav=s=>{$("s1").hidden=$("s3").hidden=s!="s1";$("s2").hidden=s!="s2";document.querySelectorAll(".tabs button").forEach(b=>b.classList.toggle("on",b.dataset.s==s));scrollTo(0,0)};
 $("tb").onclick=e=>{const b=e.target.closest("button");if(b)nav(b.dataset.s)};nav("s1");
-async function load(){
- const s=await getDoc(doc(db,"settings","payment"));if(s.exists()){$("pay").value=s.data().details||"";$("tpl").value=s.data().smsTemplate||""}
+async function load0(){
+ const s=await getDoc(doc(db,"settings","payment"));if(s.exists()){$("pay").value=s.data().details||"";T=s.data().smsTemplate||""}
  const[rs,ps]=await Promise.all([getDocs(collection(db,"renters")),getDocs(collection(db,"payments"))]),pm={};
  ps.forEach(d=>{const x=d.data();if(x.month==M)pm[x.renterId]=x});let h="",n=0,got=0,sum=0;
  rs.forEach(d=>{const r=d.data(),p=pm[r.uid]||{status:"pending"},z=(RD[r.uid]={r,p},n++,p.status=="received"&&(got++,sum+=+(p.amount||r.rent))),st=p.status=="received"?"received":today()>r.dueDay?"overdue":p.status;
  h+='<div class="row"><div><b>'+esc(r.name)+'</b> <span class="m">'+esc(r.flat)+' | '+esc(r.phone)+'<br>Rs '+esc(r.rent)+', due day '+esc(r.dueDay)+(p.refId?' | Ref: '+esc(p.refId):'')+'</span></div><div class="act"><span class="badge '+st+'">'+st+'</span> '+
- (p.status=="received"?'<button data-i="'+esc(r.uid)+'" data-a="rc">Send receipt</button> <button class="g" data-i="'+esc(r.uid)+'" data-s="pending">Undo</button>':'<button class="ok" data-i="'+esc(r.uid)+'" data-s="received" data-m="bank">Bank</button> <button class="ok" data-i="'+esc(r.uid)+'" data-s="received" data-m="cash">Cash</button>')+'</div></div>'});
+ (p.status=="received"?'<button data-i="'+esc(r.uid)+'" data-a="rc">Send receipt</button> <button class="g" data-i="'+esc(r.uid)+'" data-s="pending">Undo</button>':'<button class="ok" data-i="'+esc(r.uid)+'" data-s="received" data-m="bank">Bank</button> <button class="ok" data-i="'+esc(r.uid)+'" data-s="received" data-m="cash">Cash</button> <button class="g rem" data-i="'+esc(r.uid)+'" data-a="rm">Remind</button>')+'</div></div>'});
  $("st").innerHTML='<div><b>'+got+' of '+n+'</b>paid this month</div><div><b>Rs '+sum.toLocaleString("en-IN")+'</b>collected</div>';
  $("list").innerHTML=h||'<p class="m">No renters yet. Tap Add renter to add your first one.</p>'}
-$("list").onclick=async e=>{const t=e.target.dataset;if(!t.i)return;if(t.a=="rc")return share(RD[t.i].r,RD[t.i].p);
- await setDoc(doc(db,"payments",t.i+"_"+M),{renterId:t.i,month:M,status:t.s,method:t.m||"",...(t.s=="received"?{amount:RD[t.i].r.rent,receivedAt:dateStr()}:{})},{merge:true});load()};
+$("list").onclick=async e=>{const bt=e.target.closest("button"),t=bt?bt.dataset:{};if(!t.i)return;if(t.a=="rm")return remind(t.i);if(t.a=="rc")return share(RD[t.i].r,RD[t.i].p);
+ const lb=bt.textContent;bt.disabled=true;bt.textContent="Saving...";try{await W(setDoc(doc(db,"payments",t.i+"_"+M),{renterId:t.i,month:M,status:t.s,method:t.m||"",...(t.s=="received"?{amount:RD[t.i].r.rent,receivedAt:dateStr()}:{})},{merge:true}));await load()}catch(x){toast(x.message);bt.disabled=false;bt.textContent=lb}};
 $("add").onclick=async()=>{const f=["n","ph","fl","rent","due","pw"].map(i=>$(i).value.trim());
  if(f.some(x=>!x))return$("msg").textContent="Fill in all fields.";
  try{const c=await createUserWithEmailAndPassword(getAuth(initializeApp(cfg,"s"+Date.now())),email(f[1]),f[5]);
  await setDoc(doc(db,"renters",c.user.uid),{uid:c.user.uid,name:f[0],phone:f[1].replace(/\D/g,"").slice(-10),flat:f[2],rent:+f[3],dueDay:Math.min(28,Math.max(1,+f[4]))});
  $("msg").textContent="Renter added.";load()}catch(x){$("msg").textContent=x.message}};
-$("save").onclick=async()=>{await setDoc(doc(db,"settings","payment"),{details:$("pay").value,smsTemplate:$("tpl").value});$("msg2").textContent="Saved."};
+$("save").onclick=async()=>{$("msg2").textContent="Saving...";try{await W(setDoc(doc(db,"settings","payment"),{details:$("pay").value.trim(),smsTemplate:T}));$("msg2").textContent="Saved."}catch(x){$("msg2").textContent=x.message}};
 </script><script src="js/pwa.js"></script></body></html>
