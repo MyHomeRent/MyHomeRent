@@ -1,0 +1,8 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;800&display=swap" rel="stylesheet"><link rel="stylesheet" href="css/style.css"><title>Myhomerent</title></head><body>
+<main class="login"><div class="card"><h1 style="color:var(--b);margin:0">Myhomerent</h1><p class="m">Sign in to manage or pay your rent.</p>
+<input id="p" placeholder="Phone number (admin: email)" inputmode="numeric"><input id="w" type="password" placeholder="Password"><button id="b" style="width:100%;margin-top:8px">Sign in</button><p id="e" class="m" style="color:var(--r)"></p></div></main>
+<script type="module">
+import{auth,lid,go,isAdminUser,signInWithEmailAndPassword,onAuthStateChanged}from"./js/firebase.js";
+onAuthStateChanged(auth,u=>{if(u)go(isAdminUser(u)?"admin.html":"renter.html")});
+b.onclick=async()=>{e.textContent="";try{await signInWithEmailAndPassword(auth,lid(p.value),w.value)}catch{e.textContent="Wrong phone number or password."}};
+</script></body></html>

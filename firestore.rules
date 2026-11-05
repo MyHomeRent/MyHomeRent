@@ -1,0 +1,56 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function signedIn() { return request.auth != null; }
+    function isAdmin() { return signedIn() && request.auth.token.email == 'pranavpande43@gmail.com'; }
+    function isRenter() { return signedIn() && exists(/databases/$(database)/documents/renters/$(request.auth.uid)); }
+    function validMonth(m) { return m is string && m.matches('^[0-9]{4}-(0[1-9]|1[0-2])$'); }
+
+    match /settings/payment {
+      allow read: if isAdmin() || isRenter();
+      allow create, update: if isAdmin()
+        && request.resource.data.keys().hasOnly(['details', 'smsTemplate'])
+        && request.resource.data.details is string && request.resource.data.details.size() <= 1000
+        && request.resource.data.smsTemplate is string && request.resource.data.smsTemplate.size() <= 500;
+    }
+
+    match /renters/{uid} {
+      allow read: if isAdmin() || (signedIn() && request.auth.uid == uid);
+      allow create, update: if isAdmin()
+        && request.resource.data.keys().hasOnly(['uid','name','phone','flat','rent','dueDay'])
+        && request.resource.data.uid == uid
+        && request.resource.data.name is string && request.resource.data.name.size() <= 60
+        && request.resource.data.phone is string && request.resource.data.phone.matches('^[0-9]{10}$')
+        && request.resource.data.flat is string && request.resource.data.flat.size() <= 30
+        && request.resource.data.rent is number && request.resource.data.rent > 0
+        && request.resource.data.dueDay is number && request.resource.data.dueDay >= 1 && request.resource.data.dueDay <= 28;
+      allow delete: if isAdmin();
+    }
+
+    match /payments/{id} {
+      allow read: if isAdmin() || (signedIn() && resource.data.renterId == request.auth.uid);
+      allow create, update: if isAdmin()
+        && request.resource.data.keys().hasOnly(['renterId','month','status','method','refId','smsSent','amount','receivedAt'])
+        && validMonth(request.resource.data.month)
+        && request.resource.data.status in ['pending','submitted','received'];
+      allow delete: if isAdmin();
+      allow create: if isRenter()
+        && request.resource.data.renterId == request.auth.uid
+        && validMonth(request.resource.data.month)
+        && id == request.auth.uid + '_' + request.resource.data.month
+        && request.resource.data.status == 'submitted'
+        && request.resource.data.keys().hasOnly(['renterId','month','status','refId'])
+        && request.resource.data.refId is string
+        && request.resource.data.refId.size() > 0 && request.resource.data.refId.size() <= 40;
+      allow update: if isRenter()
+        && resource.data.renterId == request.auth.uid
+        && resource.data.status != 'received'
+        && request.resource.data.status == 'submitted'
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status','refId'])
+        && request.resource.data.refId is string
+        && request.resource.data.refId.size() > 0 && request.resource.data.refId.size() <= 40;
+    }
+
+    match /{document=**} { allow read, write: if false; }
+  }
+}

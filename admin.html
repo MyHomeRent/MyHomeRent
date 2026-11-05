@@ -1,0 +1,30 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;800&display=swap" rel="stylesheet"><link rel="stylesheet" href="css/style.css"><title>Admin - Myhomerent</title></head><body>
+<header><b>Myhomerent Admin</b><button class="g" id="out">Sign out</button></header><main>
+<div class="card"><h2>This month's rent</h2><div id="list"><p class="m">Loading...</p></div></div>
+<div class="card"><h2>Add renter</h2><div class="grid"><input id="n" placeholder="Name"><input id="ph" placeholder="Phone (10 digits)" inputmode="numeric"><input id="fl" placeholder="Flat / room"><input id="rent" placeholder="Monthly rent" inputmode="numeric"><input id="due" placeholder="Due day (1-28)" inputmode="numeric"><input id="pw" placeholder="Password (min 6)"></div><button id="add">Add renter</button> <span id="msg" class="m"></span></div>
+<div class="card"><h2>Payment details and SMS</h2><p class="m">Bank, UPI ID or a link to your QR. This text is shown to renters and can be used in the SMS.</p><textarea id="pay" rows="4" placeholder="Bank: ...&#10;A/C: ...&#10;IFSC: ...&#10;UPI: ..."></textarea>
+<p class="m">Reminder SMS. Use {name} {rent} {month} {due} {payment}</p><textarea id="tpl" rows="3" placeholder="Hello {name}, your rent of Rs {rent} for {month} was due on {due}. Please pay now. {payment}"></textarea><button id="save">Save</button> <span id="msg2" class="m"></span></div>
+</main><script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script type="module">
+import{auth,db,email,month,today,esc,go,cfg,isAdminUser,dateStr,signOut,onAuthStateChanged,createUserWithEmailAndPassword,initializeApp,getAuth,doc,getDoc,setDoc,getDocs,collection}from"./js/firebase.js";
+import{share}from"./js/receipt.js";
+const RD={},M=month(),$=s=>document.getElementById(s);
+onAuthStateChanged(auth,async u=>{if(!u)return go("index.html");if(!isAdminUser(u))return go("renter.html");load()});
+$("out").onclick=()=>signOut(auth);
+async function load(){
+ const s=await getDoc(doc(db,"settings","payment"));if(s.exists()){$("pay").value=s.data().details||"";$("tpl").value=s.data().smsTemplate||""}
+ const[rs,ps]=await Promise.all([getDocs(collection(db,"renters")),getDocs(collection(db,"payments"))]),pm={};
+ ps.forEach(d=>{const x=d.data();if(x.month==M)pm[x.renterId]=x});let h="";
+ rs.forEach(d=>{const r=d.data(),p=pm[r.uid]||{status:"pending"},z=(RD[r.uid]={r,p}),st=p.status=="received"?"received":today()>r.dueDay?"overdue":p.status;
+ h+='<div class="row"><div><b>'+esc(r.name)+'</b> <span class="m">'+esc(r.flat)+' | '+esc(r.phone)+'<br>Rs '+esc(r.rent)+', due day '+esc(r.dueDay)+(p.refId?' | Ref: '+esc(p.refId):'')+'</span></div><div><span class="badge '+st+'">'+st+'</span> '+
+ (p.status=="received"?'<button data-i="'+esc(r.uid)+'" data-a="rc">Send receipt</button> <button class="g" data-i="'+esc(r.uid)+'" data-s="pending">Undo</button>':'<button class="ok" data-i="'+esc(r.uid)+'" data-s="received" data-m="bank">Bank</button> <button class="ok" data-i="'+esc(r.uid)+'" data-s="received" data-m="cash">Cash</button>')+'</div></div>'});
+ $("list").innerHTML=h||'<p class="m">No renters yet. Add your first renter below.</p>'}
+$("list").onclick=async e=>{const t=e.target.dataset;if(!t.i)return;if(t.a=="rc")return share(RD[t.i].r,RD[t.i].p);
+ await setDoc(doc(db,"payments",t.i+"_"+M),{renterId:t.i,month:M,status:t.s,method:t.m||"",...(t.s=="received"?{amount:RD[t.i].r.rent,receivedAt:dateStr()}:{})},{merge:true});load()};
+$("add").onclick=async()=>{const f=["n","ph","fl","rent","due","pw"].map(i=>$(i).value.trim());
+ if(f.some(x=>!x))return$("msg").textContent="Fill in all fields.";
+ try{const c=await createUserWithEmailAndPassword(getAuth(initializeApp(cfg,"s"+Date.now())),email(f[1]),f[5]);
+ await setDoc(doc(db,"renters",c.user.uid),{uid:c.user.uid,name:f[0],phone:f[1].replace(/\D/g,"").slice(-10),flat:f[2],rent:+f[3],dueDay:Math.min(28,Math.max(1,+f[4]))});
+ $("msg").textContent="Renter added.";load()}catch(x){$("msg").textContent=x.message}};
+$("save").onclick=async()=>{await setDoc(doc(db,"settings","payment"),{details:$("pay").value,smsTemplate:$("tpl").value});$("msg2").textContent="Saved."};
+</script></body></html>

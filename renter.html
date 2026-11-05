@@ -1,0 +1,18 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;800&display=swap" rel="stylesheet"><link rel="stylesheet" href="css/style.css"><title>My rent - Myhomerent</title></head><body>
+<header><b>Myhomerent</b><button class="g" id="out">Sign out</button></header><main id="m"></main>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script type="module">
+import{auth,db,month,esc,go,signOut,onAuthStateChanged,doc,getDoc,setDoc,getDocs,collection,query,where}from"./js/firebase.js";
+import{download}from"./js/receipt.js";
+const M=month();document.getElementById("out").onclick=()=>signOut(auth);
+onAuthStateChanged(auth,async u=>{if(!u)return go("index.html");
+ const r=await getDoc(doc(db,"renters",u.uid));if(!r.exists()){await signOut(auth);return go("index.html")};const x=r.data();
+ const[s,ps]=await Promise.all([getDoc(doc(db,"settings","payment")),getDocs(query(collection(db,"payments"),where("renterId","==",u.uid)))]);
+ const all=ps.docs.map(d=>d.data()).sort((a,b)=>b.month.localeCompare(a.month)),p=all.find(a=>a.month==M)||{status:"pending"},due=M+"-"+String(x.dueDay).padStart(2,"0");
+ document.getElementById("m").innerHTML='<div class="card"><p class="m">Hello, '+esc(x.name)+' ('+esc(x.flat)+')</p><div class="big">Rs '+esc(x.rent)+'</div><p>Due by <b>'+due+'</b> <span class="badge '+p.status+'">'+p.status+'</span></p></div>'+
+ (p.status=="received"?'<div class="card"><h2>Payment received</h2><p class="m">Thank you. Nothing is due this month.</p></div>':'<div class="card"><h2>How to pay</h2><pre>'+esc(s.exists()?s.data().details:"Payment details will be added by your landlord.")+'</pre><input id="ref" placeholder="Transaction / reference number" value="'+esc(p.refId||"")+'"><button id="sub">Submit payment</button> <span id="ms" class="m"></span></div>')+
+ '<div class="card"><h2>History</h2>'+(all.map(a=>'<div class="row"><span>'+esc(a.month)+'</span><span class="badge '+a.status+'">'+esc(a.status)+'</span>'+(a.status=="received"?'<button class="g" data-m="'+esc(a.month)+'">Download receipt</button>':'')+'</div>').join("")||'<p class="m">No payments yet.</p>')+'</div>';
+ document.getElementById("m").onclick=e=>{const k=e.target.dataset.m;if(k)download(x,all.find(a=>a.month==k))};
+ const b=document.getElementById("sub");if(b)b.onclick=async()=>{const v=document.getElementById("ref").value.trim();if(!v)return;
+ await setDoc(doc(db,"payments",u.uid+"_"+M),{renterId:u.uid,month:M,status:"submitted",refId:v},{merge:true});document.getElementById("ms").textContent="Submitted. Your landlord will confirm it."}});
+</script></body></html>
