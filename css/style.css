@@ -61,3 +61,8 @@ body.adm .ib{bottom:calc(100px + var(--sb))}
 [hidden]{display:none!important}
 @media(prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
 .acts .w{grid-column:1/-1;min-height:52px}.acts .ap{grid-column:1/-1;font-size:13px;color:var(--m);margin-top:2px}
+.chip{display:inline-block;margin:6px 6px 0 0;padding:4px 10px;border-radius:12px;background:#FDE8E6;color:var(--r);font-size:12px;font-weight:700}
+.res{margin-top:12px;padding:14px;border-radius:16px;font-size:14px;line-height:1.5}.res b{display:block;font-size:16px}.res.ok{background:#DCFCE7;color:var(--ok)}.res.no{background:#FDE8E6;color:var(--r)}
+.dl{background:#FDE8E6;color:var(--r)}.acts .dl{grid-column:1/-1;min-height:44px}.res .dl{width:100%;margin-top:10px;min-height:44px}
+.amt2{background:var(--bg);border-radius:14px;padding:12px;margin-bottom:4px}.amt2 b{display:block;font:800 20px "Bricolage Grotesque",sans-serif;color:var(--t)}
+.mo small{display:block;font-weight:400;font-size:12px;color:var(--m)}
