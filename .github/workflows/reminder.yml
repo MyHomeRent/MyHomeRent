@@ -1,0 +1,17 @@
+name: Rent reminders
+on:
+  schedule: [{cron: "0 * * * *"}]
+  workflow_dispatch:
+jobs:
+  sms:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: {node-version: 20}
+      - run: npm install
+      - run: node scripts/send-sms.js
+        env:
+          FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+          SMSGATE_USER: ${{ secrets.SMSGATE_USER }}
+          SMSGATE_PASS: ${{ secrets.SMSGATE_PASS }}
