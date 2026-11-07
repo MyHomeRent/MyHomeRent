@@ -16,8 +16,8 @@
 <div class="sum" id="sum"></div></div>
 <p id="msg" class="m" style="color:var(--r);margin:10px 0 0" role="alert"></p>
 <div class="wzb"><button class="g" id="wb" hidden>Back</button><button id="wn">Next</button></div></div>
-<div class="card" id="s3"><h2>Your details</h2><label class="lbl" for="ownin" style="margin-top:0">Your name</label><input id="ownin" placeholder="e.g. Pranav Pande" autocomplete="off"><small class="gd">Shown on receipts and at the end of every WhatsApp and SMS message.</small>
-<label class="lbl" for="pay">UPI ID or QR link</label><textarea id="pay" rows="2" placeholder="name@upi  or  https://link-to-your-qr" autocapitalize="off"></textarea><small class="gd">Renters see this under Payment details, and it is added to reminder messages.</small><button id="save" style="width:100%;margin-top:14px;min-height:50px">Save details</button></div>
+<div class="card" id="s3"><div id="dv" hidden><h2 style="margin:0 0 10px">Your details</h2><div class="sum" style="margin-top:0"><div><span>Name</span><b id="dvn"></b></div><div><span>UPI ID / link</span><b id="dvu"></b></div></div><button class="g" id="chg" style="width:100%;margin-top:12px;min-height:48px">Change</button></div><div id="de"><h2>Your details</h2><label class="lbl" for="ownin" style="margin-top:0">Your name</label><input id="ownin" placeholder="e.g. Pranav Pande" autocomplete="off"><small class="gd">Shown on receipts and at the end of every WhatsApp and SMS message.</small>
+<label class="lbl" for="pay">UPI ID or QR link</label><textarea id="pay" rows="2" placeholder="name@upi  or  https://link-to-your-qr" autocapitalize="off"></textarea><small class="gd">Renters see this under Payment details, and it is added to reminder messages.</small><button id="save" style="width:100%;margin-top:14px;min-height:50px">Save details</button><button class="g" id="cx" hidden style="width:100%;margin-top:8px;min-height:48px">Cancel</button></div></div>
 <div id="s4" hidden><div class="card"><h2>Check a receipt</h2><p class="m" style="margin:0">Scan the QR on a receipt with your phone camera, or type the receipt number.</p><input id="rq" placeholder="MHR-7KQ4P2" autocapitalize="characters" autocomplete="off" spellcheck="false"><button id="rs" style="width:100%;margin-top:6px">Check receipt</button><div id="rr"></div></div>
 <button id="rep" class="ink" style="width:100%;margin-top:14px;min-height:52px">Download full report (PDF)</button><div id="tot"></div></div>
 <div id="s5" hidden><div id="hl"></div></div></main>
@@ -28,7 +28,7 @@
 <script type="module">
 import{auth,db,email,month,today,esc,go,cfg,isAdminUser,dateStr,signOut,onAuthStateChanged,createUserWithEmailAndPassword,initializeApp,getAuth,doc,getDoc,setDoc,getDocs,collection,deleteDoc,query,where,signInWithEmailAndPassword}from"./js/firebase.js";
 import{download,rno,fl,dues,downloadStatement,downloadReport,msgReceipt,msgRemind,msgLogin,sendMsg}from"./js/receipt.js";
-let T="",OWN="",PAYS=[],ROWS=[],HIST=[],HN=60,NEW=null,S=1;const RD={},M=month(),$=s=>document.getElementById(s),sleep=ms=>new Promise(r=>setTimeout(r,ms));
+let DET={o:"",p:""},T="",OWN="",PAYS=[],ROWS=[],HIST=[],HN=60,NEW=null,S=1;const RD={},M=month(),$=s=>document.getElementById(s),sleep=ms=>new Promise(r=>setTimeout(r,ms));
 const hm=location.hash.match(/check=([\w-]+)/);if(hm)try{localStorage.setItem("mhr_chk",JSON.stringify([hm[1],Date.now()]))}catch{}
 const chk=()=>{try{const v=JSON.parse(localStorage.getItem("mhr_chk")||"null");localStorage.removeItem("mhr_chk");return v&&Date.now()-v[1]<6e5?v[0]:""}catch{return""}};
 onAuthStateChanged(auth,async u=>{if(!u)return go("index.html");if(!isAdminUser(u))return go("renter.html");load()});
@@ -43,7 +43,7 @@ $("oa").onclick=e=>{const b=e.target.closest("button");if(!b)return;const d=b.da
  if(d.x!==undefined){$("ov").hidden=true;if(d.done!==undefined){NEW=null;resetWiz();nav("s1")}}};
 async function load(){try{await W(load0());const c=chk();if(c){nav("s4");$("rq").value=c;$("rs").click()}}catch(x){$("list").innerHTML='<div class="card"><p class="m">'+esc(x.message)+'</p><button class="g" id="rt">Retry</button></div>';$("rt").onclick=load}}
 async function load0(){
- const s=await getDoc(doc(db,"settings","payment"));if(s.exists()){$("pay").value=s.data().details||"";T=s.data().smsTemplate||"";OWN=s.data().owner||"";$("ownin").value=OWN;$("own").textContent=OWN}
+ const s=await getDoc(doc(db,"settings","payment"));if(s.exists()){$("pay").value=s.data().details||"";T=s.data().smsTemplate||"";OWN=s.data().owner||"";$("ownin").value=OWN;$("own").textContent=OWN;DET={o:OWN,p:$("pay").value}}det(false);
  const[rs,ps]=await Promise.all([getDocs(collection(db,"renters")),getDocs(collection(db,"payments"))]),pm={};PAYS=ps.docs.map(d=>d.data());
  ps.forEach(d=>{const x=d.data();if(x.month==M)pm[x.renterId]=x});
  const dt=new Date(M+"-15"),mo=dt.toLocaleString("en-IN",{month:"long"}),ms=dt.toLocaleString("en-IN",{month:"short"}),
@@ -88,7 +88,7 @@ $("rs").onclick=()=>{const raw=$("rq").value.toUpperCase().replace(/\s/g,""),mN=
 $("rq").onkeydown=e=>{if(e.key=="Enter")$("rs").click()};
 $("rr").onclick=async e=>{const b=e.target.closest("button"),id=b&&b.dataset.del;if(!id||!confirm("Delete this payment record permanently?"))return;
  await flow("Deleting record",async()=>{await deleteDoc(doc(db,"payments",id));log("del","Deleted payment record "+id.split("_")[1]);$("rr").innerHTML="";await load()},()=>({t:"Record deleted",d:"The payment record was removed."}),{k:"del",min:900})};
-$("save").onclick=()=>flow("Saving details",async()=>{OWN=$("ownin").value.trim();await setDoc(doc(db,"settings","payment"),{details:$("pay").value.trim(),smsTemplate:T,owner:OWN});$("own").textContent=OWN;log("set","Updated your name and payment details")},()=>({t:"Details saved",d:"Receipts and messages will use them."}),{min:800});
+$("save").onclick=()=>flow("Saving details",async()=>{OWN=$("ownin").value.trim();await setDoc(doc(db,"settings","payment"),{details:$("pay").value.trim(),smsTemplate:T,owner:OWN});$("own").textContent=OWN;DET={o:OWN,p:$("pay").value.trim()};det(false);log("set","Updated your name and payment details")},()=>({t:"Details saved",d:"Receipts and messages will use them."}),{min:800});
 // ---- add renter wizard
 const sel=(id,h)=>{$(id).innerHTML=h},mths=(()=>{let[y,m]=M.split("-").map(Number),o=[];for(let i=0;i<12;i++){const k=y+"-"+String(m).padStart(2,"0");o.push('<option value="'+k+'">'+new Date(k+"-15").toLocaleString("en-IN",{month:"long",year:"numeric"})+(i?"":" (this month)")+"</option>");if(--m<1){m=12;y--}}return o.join("")})();
 sel("fl",'<option value="">Select room or flat</option><optgroup label="Rooms">'+Array.from({length:12},(_,i)=>"<option>Room "+(i+1)+"</option>").join("")+'</optgroup><optgroup label="Flats">'+Array.from({length:12},(_,i)=>"<option>Flat "+(i+1)+"</option>").join("")+'</optgroup><optgroup label="Floors"><option>Ground floor</option><option>1st floor</option><option>2nd floor</option><option>3rd floor</option><option>Shop</option></optgroup><option value="__o">Other (type it)</option>');
@@ -114,6 +114,8 @@ function drawHist(){const f=d=>d.toLocaleDateString("en-IN",{day:"numeric",month
  $("hl").innerHTML=HIST.length?'<div class="card">'+h+"</div>"+(HIST.length>HN?'<button class="g" id="hm" style="width:100%;margin-top:4px">Show more</button>':""):'<div class="card"><p class="m" style="margin:0">Nothing yet. Payments, reminders, receipts and changes will be recorded here.</p></div>'}
 async function hist(){$("hl").innerHTML='<div class="sk"></div>';try{const s=await W(getDocs(collection(db,"activity")));HIST=s.docs.map(d=>d.data()).sort((a,b)=>b.at-a.at);drawHist()}catch(x){$("hl").innerHTML='<div class="card"><p class="m" style="margin:0">'+esc(err(x))+"</p></div>"}}
 $("hl").onclick=e=>{if(e.target.id=="hm"){HN+=60;drawHist()}};
+function det(edit){const has=DET.o||DET.p;$("dv").hidden=!has||edit;$("de").hidden=!!has&&!edit;$("cx").hidden=!has;$("dvn").textContent=DET.o||"Not set";$("dvu").textContent=DET.p?(DET.p.length>26?DET.p.slice(0,24)+"\u2026":DET.p):"Not set"}
+$("chg").onclick=()=>{$("ownin").value=DET.o;$("pay").value=DET.p;det(true)};$("cx").onclick=()=>{$("ownin").value=DET.o;$("pay").value=DET.p;det(false)};
 const nav=s=>{$("s1").hidden=$("s3").hidden=s!="s1";["s2","s4","s5"].forEach(i=>$(i).hidden=s!=i);document.querySelectorAll(".tabs button").forEach(b=>b.classList.toggle("on",b.dataset.s==s));scrollTo(0,0);if(s=="s5")hist()};
 $("tb").onclick=e=>{const b=e.target.closest("button");if(b)nav(b.dataset.s)};resetWiz();nav("s1");
 </script><script src="js/pwa.js"></script></body></html>
