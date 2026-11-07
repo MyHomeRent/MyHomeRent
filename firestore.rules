@@ -25,10 +25,11 @@ service cloud.firestore {
       allow get: if isAdmin() || isRenter();
       allow list: if false;
       allow create, update: if isAdmin()
-        && newDoc().keys().hasOnly(['details', 'smsTemplate'])
+        && newDoc().keys().hasOnly(['details', 'smsTemplate', 'owner'])
         && newDoc().keys().hasAll(['details', 'smsTemplate'])
         && newDoc().details is string && newDoc().details.size() <= 500
-        && newDoc().smsTemplate is string && newDoc().smsTemplate.size() <= 300;
+        && newDoc().smsTemplate is string && newDoc().smsTemplate.size() <= 300
+        && (!('owner' in newDoc()) || (newDoc().owner is string && newDoc().owner.size() <= 60));
       allow delete: if false;
     }
 
@@ -67,6 +68,18 @@ service cloud.firestore {
         && (!('smsSent' in newDoc()) || newDoc().smsSent is bool)
         && (!('refId' in newDoc()) || (newDoc().refId is string && newDoc().refId.size() <= 60));
       allow delete: if isAdmin();
+    }
+
+    // Activity history. Admin can read and add entries. Nobody can edit or delete them.
+    match /activity/{id} {
+      allow get, list: if isAdmin();
+      allow create: if isAdmin()
+        && newDoc().keys().hasOnly(['at', 'type', 'text'])
+        && newDoc().keys().hasAll(['at', 'type', 'text'])
+        && newDoc().at is int
+        && newDoc().type in ['pay', 'undo', 'remind', 'receipt', 'add', 'cred', 'del', 'set', 'chk']
+        && newDoc().text is string && newDoc().text.size() <= 200;
+      allow update, delete: if false;
     }
 
     // Everything else is closed.

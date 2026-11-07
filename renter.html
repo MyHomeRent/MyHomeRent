@@ -1,9 +1,10 @@
 <!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:wght@600;800&family=Figtree:wght@400;600;700&display=swap" rel="stylesheet"><link rel="manifest" href="manifest.json"><meta name="theme-color" content="#F2F5F4"><meta name="mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-title" content="Myhomerent"><link rel="apple-touch-icon" href="apple-touch-icon.png"><link rel="stylesheet" href="css/style.css"><title>My rent - Myhomerent</title></head><body>
 <header><b>Myhomerent</b><span><button class="inst g" hidden>Install</button> <button class="g" id="out">Sign out</button></span></header><main id="m"><p class="m">Loading...</p></main>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.4.4/qrcode.min.js"></script>
 <script type="module">
 import{auth,db,month,today,esc,go,signOut,onAuthStateChanged,doc,getDoc,getDocs,collection,query,where}from"./js/firebase.js";
-import{download,downloadStatement,dues,rno}from"./js/receipt.js";
+import{download,downloadStatement,dues,rno,fl}from"./js/receipt.js";
 const M=month(),$=i=>document.getElementById(i),mm=s=>new Date(s+"-15").toLocaleString("en-IN",{month:"long",year:"numeric"});
 $("out").onclick=()=>signOut(auth);
 onAuthStateChanged(auth,async u=>{if(!u)return go("index.html");
@@ -11,11 +12,11 @@ onAuthStateChanged(auth,async u=>{if(!u)return go("index.html");
  const[s,ps]=await Promise.all([getDoc(doc(db,"settings","payment")),getDocs(query(collection(db,"payments"),where("renterId","==",u.uid)))]);
  const all=ps.docs.map(d=>d.data()).sort((a,b)=>b.month.localeCompare(a.month)),p=all.find(a=>a.month==M)||{status:"pending"},ok=p.status=="received",st=ok?"received":today()>x.dueDay?"overdue":"pending",
  due=new Date(M+"-"+String(x.dueDay).padStart(2,"0")+"T12:00:00").toLocaleDateString("en-IN",{day:"numeric",month:"short"}),
- d=s.exists()?(s.data().details||""):"",id=(d.match(/[\w.\-]{2,}@[\w]{2,}/)||[])[0],fm=Number(x.rent).toLocaleString("en-IN"),
+ d=s.exists()?(s.data().details||""):"",own=s.exists()?(s.data().owner||""):"",id=(d.match(/[\w.\-]{2,}@[\w]{2,}/)||[])[0],fm=Number(x.rent).toLocaleString("en-IN"),
  ld=esc(d||"Payment details will be added by your landlord.").replace(/(https?:\/\/|upi:\/\/)[^\s<]+/g,k=>'<a href="'+k+'" rel="noopener">'+k+'</a>');
- const du=dues(x,all,M,today()),fm2=v=>Number(v).toLocaleString("en-IN");$("m").innerHTML='<div class="hero rt"><span>Hello, '+esc(x.name)+'. Rent for '+new Date(M+"-15").toLocaleString("en-IN",{month:"long"})+'</span><b>Rs '+fm+'</b><span>Flat '+esc(x.flat)+', due by '+due+'</span><em class="badge '+st+'">'+(ok?"paid":st)+'</em></div>'+
+ const du=dues(x,all,M,today()),fm2=v=>Number(v).toLocaleString("en-IN");$("m").innerHTML='<div class="hero rt"><span>Hello, '+esc(x.name)+'. Rent for '+new Date(M+"-15").toLocaleString("en-IN",{month:"long"})+'</span><b>Rs '+fm+'</b><span>'+esc(fl(x.flat))+', due by '+due+'</span><em class="badge '+st+'">'+(ok?"paid":st)+'</em></div>'+
  (ok?'<div class="card"><h2>Payment received</h2><p class="m" style="margin:0">Thank you. Nothing is due this month.</p></div>':'<div class="card"><h2>Payment details</h2><pre>'+ld+'</pre>'+(id?'<button class="g" style="width:100%;margin-top:10px" data-c="'+esc(id)+'">Copy UPI ID</button>':'')+'</div>')+
  '<div class="card"><h2>My records</h2><div class="two"><div class="amt2"><span class="m">Total paid</span><b>Rs '+fm2(du.paid)+'</b></div><div class="amt2"><span class="m">Due</span><b>Rs '+fm2(du.amt)+'</b></div></div>'+(du.months.length?'<div style="margin-top:6px">'+du.months.map(m=>'<span class="chip">'+mm(m)+'</span>').join("")+'</div>':'<p class="m" style="margin:10px 0 0">No dues. All paid up.</p>')+'<div style="margin-top:8px">'+(all.map(a=>'<div class="row"><span class="mo">'+mm(a.month)+(a.status=="received"?'<small>'+rno(a.month,x.phone)+'</small>':'')+'</span><span class="badge '+(a.status=="received"?"received":"pending")+'">'+(a.status=="received"?"paid":esc(a.status))+'</span>'+(a.status=="received"?'<button class="g" data-m="'+esc(a.month)+'">Receipt</button>':'')+'</div>').join("")||'<p class="m" style="margin:0">No payments yet.</p>')+'</div><button class="ink" style="width:100%;margin-top:12px;min-height:50px" data-st="1">Download full statement (PDF)</button></div>';
- $("m").onclick=e=>{const t=e.target.dataset;if(t.c){try{navigator.clipboard.writeText(t.c);e.target.textContent="Copied"}catch{}}if(t.m)download(x,all.find(a=>a.month==t.m));if(t.st)downloadStatement(x,all,du)};
+ $("m").onclick=e=>{const t=e.target.dataset;if(t.c){try{navigator.clipboard.writeText(t.c);e.target.textContent="Copied"}catch{}}if(t.m)download(x,all.find(a=>a.month==t.m),own);if(t.st)downloadStatement(x,all,du)};
  }catch(x){$("m").innerHTML='<div class="card"><p class="m">Could not load. Check your internet and refresh.</p></div>'}});
 </script><script src="js/pwa.js"></script></body></html>
