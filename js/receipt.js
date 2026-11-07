@@ -1,9 +1,10 @@
-// PDFs (receipt, statement, report) are built in the browser with jsPDF. Receipt no = MHR-YYYYMM-<10 digit phone>, so it can be checked against the records.
+// PDFs (receipt, statement, report) are built in the browser with jsPDF. Receipt no = MHR- plus 6 letters/digits made from the renter id and month. It has no phone number and can be checked against the records.
 const T=[15,118,110],I=[14,42,43],MU=[91,113,114],R=[180,35,24],G=[21,128,61];
 const mn=m=>new Date(m+"-15").toLocaleString("en-IN",{month:"long",year:"numeric"}),ms=m=>new Date(m+"-15").toLocaleString("en-IN",{month:"short",year:"numeric"}),rs=n=>"Rs. "+Number(n).toLocaleString("en-IN");
 const nx=m=>{let[y,o]=m.split("-").map(Number);o++;if(o>12){o=1;y++}return y+"-"+String(o).padStart(2,"0")};
 export const fl=v=>/^\d+$/.test(String(v))?"Flat "+v:String(v);
-export const rno=(m,ph)=>"MHR-"+m.replace("-","")+"-"+ph;
+const h53=s=>{let a=0xdeadbeef,b=0x41c6ce57;for(let i=0,c;i<s.length;i++){c=s.charCodeAt(i);a=Math.imul(a^c,2654435761);b=Math.imul(b^c,1597334677)}a=Math.imul(a^(a>>>16),2246822507)^Math.imul(b^(b>>>13),3266489909);b=Math.imul(b^(b>>>16),2246822507)^Math.imul(a^(a>>>13),3266489909);return 4294967296*(2097151&b)+(a>>>0)};
+export const rno=(m,uid)=>{let n=h53(uid+"|"+m)%1073741824,o="";for(let i=0;i<6;i++){o="23456789ABCDEFGHJKLMNPQRSTUVWXYZ"[n%32]+o;n=Math.floor(n/32)}return"MHR-"+o};
 export function dues(r,ps,M,td){
   const rec=ps.filter(p=>p.status=="received"),got=new Set(rec.map(p=>p.month)),first=r.since||ps.map(p=>p.month).sort()[0]||M,months=[];
   for(let m=first,i=0;m<=M&&i<240;m=nx(m),i++)if(!got.has(m)&&(m<M||td>r.dueDay))months.push(m);
@@ -19,7 +20,7 @@ function words(n){const a=["","One","Two","Three","Four","Five","Six","Seven","E
 export const verifyUrl=no=>new URL("admin.html",location.href).href+"#check="+no;
 function qr(d,text,x,y,s){if(typeof window.qrcode!="function")return false;try{const q=window.qrcode(0,"M");q.addData(text);q.make();const n=q.getModuleCount(),c=s/n;d.setFillColor(...I);for(let a=0;a<n;a++)for(let b=0;b<n;b++)if(q.isDark(a,b))d.rect(x+b*c,y+a*c,c+.03,c+.03,"F");return true}catch{return false}}
 export function receipt(r,p,own){
-  const d=pdf([88,180]),amt=p.amount||r.rent,no=rno(p.month,r.phone),by=p.method=="cash"?"Cash":"UPI / Online",C={align:"center"},Rt={align:"right"},
+  const d=pdf([88,180]),amt=p.amount||r.rent,no=rno(p.month,r.uid),by=p.method=="cash"?"Cash":"UPI / Online",C={align:"center"},Rt={align:"right"},
   tx=(s,x,y,sz,c,b,o)=>{d.setFont("helvetica",b?"bold":"normal");d.setFontSize(sz);d.setTextColor(...c);d.text(String(s),x,y,o)};
   d.setFillColor(242,245,244);d.rect(0,0,88,180,"F");d.setFillColor(255,255,255);d.roundedRect(5,5,78,170,5,5,"F");
   d.setFillColor(...T);d.roundedRect(11,11,9,9,2.5,2.5,"F");d.setFillColor(255,255,255);d.triangle(15.5,12.8,12,15.8,19,15.8,"F");d.rect(12.9,15.8,5.2,3,"F");
@@ -41,7 +42,7 @@ export function statement(r,all,du){
   d.setFont("helvetica","bold");d.setFontSize(10);d.setTextColor(...MU);["Month","Date","Method","Amount","Receipt no."].forEach((h,i)=>d.text(h,[15,50,85,125,195][i],y,{align:i>2&&i<4?"left":i==4?"right":"left"}));
   d.setDrawColor(...MU);d.line(15,y+2,195,y+2);y+=9;
   all.filter(p=>p.status=="received").forEach(p=>{if(y>275){d.addPage();y=20}
-    d.setFont("helvetica","normal");d.setFontSize(10);d.setTextColor(...I);d.text(ms(p.month),15,y);d.text(p.receivedAt||"-",50,y);d.text(p.method=="cash"?"Cash":"UPI / Online",85,y);d.text(rs(p.amount||r.rent),125,y);d.text(rno(p.month,r.phone),195,y,{align:"right"});y+=8});
+    d.setFont("helvetica","normal");d.setFontSize(10);d.setTextColor(...I);d.text(ms(p.month),15,y);d.text(p.receivedAt||"-",50,y);d.text(p.method=="cash"?"Cash":"UPI / Online",85,y);d.text(rs(p.amount||r.rent),125,y);d.text(rno(p.month,r.uid),195,y,{align:"right"});y+=8});
   foot(d,"Generated on "+new Date().toLocaleDateString("en-IN"));
   return{name:"Statement-"+r.name.replace(/\W+/g,"_")+".pdf",blob:d.output("blob")};
 }
@@ -61,7 +62,7 @@ export const download=(r,p,o)=>save(receipt(r,p,o));
 export const downloadStatement=(r,all,du)=>save(statement(r,all,du));
 export const downloadReport=(rows,M)=>save(report(rows,M));
 const site=()=>new URL("./",location.href).href,sg=o=>"\n\nRegards,\n"+(o||"Myhomerent");
-export const msgReceipt=(r,p,o)=>"Hello "+r.name+",\n\nThank you! We have received your rent payment.\n\nAmount: "+rs(p.amount||r.rent)+"\nFor: "+mn(p.month)+"\nPaid by: "+(p.method=="cash"?"Cash":"UPI / Online")+" on "+fd(p.receivedAt)+"\nReceipt no: "+rno(p.month,r.phone)+"\n\nYou can view and download your receipts here:\n"+site()+sg(o);
+export const msgReceipt=(r,p,o)=>"Hello "+r.name+",\n\nThank you! We have received your rent payment.\n\nAmount: "+rs(p.amount||r.rent)+"\nFor: "+mn(p.month)+"\nPaid by: "+(p.method=="cash"?"Cash":"UPI / Online")+" on "+fd(p.receivedAt)+"\nReceipt no: "+rno(p.month,r.uid)+"\n\nYou can view and download your receipts here:\n"+site()+sg(o);
 export const msgRemind=(r,M,td,pay,o)=>"Hello "+r.name+",\n\nThis is a gentle reminder that your rent of "+rs(r.rent)+" for "+mn(M)+(td>r.dueDay?" was due on ":" is due on ")+fd(M+"-"+String(r.dueDay).padStart(2,"0"))+".\n"+(pay?"\nYou can pay here: "+pay+"\n":"")+"\nIf you have already paid, please ignore this message."+sg(o);
 export const msgLogin=(n,ph,pw,o)=>"Hello "+n+",\n\nWelcome! "+(o?o+" has":"You have been")+" added you to Myhomerent, where you can see your rent, receipts and payment history.\n\nSign in here: "+new URL("index.html",location.href).href+"\nPhone number: "+ph+"\nPassword: "+pw+"\n\nPlease keep this password private."+sg(o);
 export const sendMsg=(k,ph,t)=>{if(k=="wa")window.open("https://wa.me/91"+ph+"?text="+encodeURIComponent(t),"_blank");else location.href="sms:+91"+ph+"?body="+encodeURIComponent(t)};
