@@ -93,3 +93,8 @@ select:focus{outline:0;border-color:var(--b);box-shadow:0 0 0 4px #0f766e22}
 header small{display:block;font-size:13px;margin-top:-2px}
 .tabs button{font-size:11px}
 .ib.fl{position:static;max-width:none;margin:2px 0 12px;animation:none}
+.partial{background:#FEF3C7;color:var(--w)}.hero .badge.partial{color:var(--w)}
+.pvc{background:#fff;border-radius:24px;padding:18px;width:100%;max-width:340px;max-height:92dvh;overflow:auto;animation:pop .35s cubic-bezier(.2,.9,.3,1.2)}
+.dg{background:var(--r);color:#fff}
+.ra{display:flex;align-items:center;gap:8px;padding:10px 0;border-bottom:1px solid #EDF1F0}.ra div{flex:1;min-width:0}.ra b{display:block}.ra small{color:var(--m);font-size:13px}.ra button{min-height:42px;padding:0 14px}.ra.sent small::after{content:" - reminder opened";color:var(--ok);font-weight:700}
+header>span{display:flex;gap:6px;align-items:center}
