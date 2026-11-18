@@ -98,3 +98,54 @@ header small{display:block;font-size:13px;margin-top:-2px}
 .dg{background:var(--r);color:#fff}
 .ra{display:flex;align-items:center;gap:8px;padding:10px 0;border-bottom:1px solid #EDF1F0}.ra div{flex:1;min-width:0}.ra b{display:block}.ra small{color:var(--m);font-size:13px}.ra button{min-height:42px;padding:0 14px}.ra.sent small::after{content:" - reminder opened";color:var(--ok);font-weight:700}
 header>span{display:flex;gap:6px;align-items:center}
+
+/* ===== GLASS UI v2 (transparent buttons + stretch animation) ===== */
+:root{--gl:rgba(255,255,255,.58);--ge:rgba(255,255,255,.8);--btn:rgba(15,118,110,.14);--sep:rgba(14,42,43,.09);--o1:#5eead4;--o2:#93c5fd;--sh:0 10px 30px rgba(11,95,88,.12);--sp:cubic-bezier(.3,1.9,.5,1)}
+@media(prefers-color-scheme:dark){:root{--t:#E6F4F2;--m:#9FB8B6;--bd:#7ee8da;--bg:#071b1c;--ln:rgba(255,255,255,.18);--mint:rgba(94,234,212,.16);--gl:rgba(22,42,44,.6);--ge:rgba(255,255,255,.14);--btn:rgba(94,234,212,.16);--sep:rgba(255,255,255,.1);--o1:#0f766e;--o2:#1d4ed8;--sh:0 10px 30px rgba(0,0,0,.35)}}
+html{background:var(--bg)}
+body{background:linear-gradient(160deg,#dff3ef,#e3ebfb) fixed}
+@media(prefers-color-scheme:dark){body{background:linear-gradient(160deg,#071b1c,#0b1426) fixed}}
+body::before,body::after{content:"";position:fixed;z-index:-1;border-radius:50%;filter:blur(70px);opacity:.7;pointer-events:none}
+body::before{width:300px;height:300px;background:var(--o1);top:-60px;right:-80px}
+body::after{width:340px;height:340px;background:var(--o2);bottom:80px;left:-120px}
+header{background:var(--gl);-webkit-backdrop-filter:blur(22px) saturate(170%);backdrop-filter:blur(22px) saturate(170%);border-bottom:1px solid var(--ge)}
+/* glass surfaces */
+.card,.rc,.pvc,.ovc{background:var(--gl);-webkit-backdrop-filter:blur(22px) saturate(170%);backdrop-filter:blur(22px) saturate(170%);border:1px solid var(--ge);box-shadow:var(--sh),inset 0 1px 0 var(--ge)}
+.ovc,.pvc{background:var(--gl);-webkit-backdrop-filter:blur(30px) saturate(180%);backdrop-filter:blur(30px) saturate(180%)}
+.ov{-webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px)}
+.hero{background:linear-gradient(135deg,rgba(14,42,43,.9),rgba(15,118,110,.72));border:1px solid rgba(255,255,255,.22);box-shadow:var(--sh),inset 0 1px 0 rgba(255,255,255,.25);-webkit-backdrop-filter:blur(22px);backdrop-filter:blur(22px)}
+.hero.rt{background:linear-gradient(135deg,rgba(15,118,110,.88),rgba(37,99,235,.62))}
+.amt2,.sum{background:var(--btn);border:1px solid var(--ge)}
+.row,.ra,.hi{border-bottom-color:var(--sep)}
+.lbl,.seg button{color:var(--m)}
+.ib,.tt{background:rgba(14,42,43,.72);-webkit-backdrop-filter:blur(22px) saturate(170%);backdrop-filter:blur(22px) saturate(170%);border:1px solid rgba(255,255,255,.18);box-shadow:0 12px 32px rgba(0,0,0,.22)}
+.mk{background:linear-gradient(135deg,rgba(15,118,110,.9),rgba(37,99,235,.7));border:1px solid rgba(255,255,255,.4);box-shadow:0 10px 26px rgba(15,118,110,.3),inset 0 1px 0 rgba(255,255,255,.4)}
+.av,.cc{background:var(--btn);border:1px solid var(--ge)}
+.stp i{background:var(--sep)}.stp i.on{background:var(--b)}
+.sk{background:linear-gradient(90deg,var(--btn) 25%,var(--gl) 50%,var(--btn) 75%);background-size:200% 100%}
+/* inputs */
+input,textarea,select{background-color:var(--gl);border:1px solid var(--ge);-webkit-backdrop-filter:blur(14px);backdrop-filter:blur(14px);color:var(--t);box-shadow:inset 0 1px 0 var(--ge)}
+input:focus,textarea:focus,select:focus{border-color:var(--b);box-shadow:0 0 0 4px #0f766e33}
+@media(prefers-color-scheme:dark){select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='9' fill='none' stroke='%23E6F4F2' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M1 1.5l6 6 6-6'/%3E%3C/svg%3E")}}
+/* glass buttons + stretch (spring) */
+button,.btn{background:rgba(15,118,110,.8);color:#fff;border:1px solid rgba(255,255,255,.4);-webkit-backdrop-filter:blur(14px) saturate(160%);backdrop-filter:blur(14px) saturate(160%);box-shadow:0 8px 20px rgba(15,118,110,.22),inset 0 1px 0 rgba(255,255,255,.45);transition:transform .55s var(--sp),background .2s,box-shadow .2s;will-change:transform}
+button:active,.btn:active{transform:scale(1.09,.9);transition-duration:.1s;box-shadow:0 2px 8px rgba(15,118,110,.2),inset 0 1px 0 rgba(255,255,255,.4)}
+button.g{background:var(--btn);color:var(--bd);border-color:var(--ge);box-shadow:0 6px 16px rgba(15,118,110,.12),inset 0 1px 0 var(--ge)}
+button.ink,.btn.ink{background:rgba(14,42,43,.78);color:#fff;border-color:rgba(255,255,255,.22);box-shadow:0 8px 20px rgba(14,42,43,.22),inset 0 1px 0 rgba(255,255,255,.2)}
+button.dl{background:rgba(180,35,24,.14);color:var(--r);border-color:rgba(180,35,24,.3);box-shadow:inset 0 1px 0 var(--ge)}
+button.dg{background:rgba(180,35,24,.82);color:#fff;border-color:rgba(255,255,255,.35)}
+.acts .tb{background:transparent;color:var(--bd);border-color:transparent;box-shadow:none;-webkit-backdrop-filter:none;backdrop-filter:none}
+.ib .inst{background:rgba(255,255,255,.88);color:var(--ink)}
+.ib .x{background:rgba(255,255,255,.18);border-color:rgba(255,255,255,.25);box-shadow:none}
+@media(hover:hover){button:not(.g):not(.t):not(.ink):not(.dl):not(.dg):hover{background:rgba(11,95,88,.92)}button.g:hover{background:rgba(15,118,110,.24)}}
+/* segmented switch */
+.seg{background:var(--btn);border:1px solid var(--ge);-webkit-backdrop-filter:blur(14px);backdrop-filter:blur(14px)}
+.seg button{background:transparent;border-color:transparent;box-shadow:none;-webkit-backdrop-filter:none;backdrop-filter:none}
+.seg button.on{background:var(--gl);color:var(--bd);border-color:var(--ge);box-shadow:0 4px 12px rgba(15,118,110,.15),inset 0 1px 0 var(--ge)}
+/* floating glass tab bar */
+.tabs{left:50%;right:auto;transform:translateX(-50%);width:min(420px,calc(100% - 28px));bottom:calc(14px + var(--sb));padding:6px;gap:4px;border-radius:30px;background:var(--gl);-webkit-backdrop-filter:blur(26px) saturate(180%);backdrop-filter:blur(26px) saturate(180%);border:1px solid var(--ge);box-shadow:0 16px 40px rgba(11,95,88,.22),inset 0 1px 0 var(--ge)}
+.tabs button{background:transparent;color:var(--m);border-color:transparent;box-shadow:none;-webkit-backdrop-filter:none;backdrop-filter:none;border-radius:24px}
+.tabs button.on{background:var(--btn);color:var(--bd);border-color:var(--ge);box-shadow:inset 0 1px 0 var(--ge)}
+body.adm main{padding-bottom:calc(120px + var(--sb))}
+body.adm .ib,.tt{bottom:calc(104px + var(--sb))}
+@media(prefers-reduced-motion:reduce){button,.btn{will-change:auto}}
